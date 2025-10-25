@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube URL Processor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #FF0000 0%, #282828 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #FF0000;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        .input-section {
+            margin-bottom: 30px;
+        }
+        label {
+            display: block;
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            resize: vertical;
+            transition: border-color 0.3s;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #FF0000;
+        }
+        .hint {
+            margin-top: 8px;
+            color: #888;
+            font-size: 0.9em;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+        }
+        button {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-process {
+            background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
+            color: white;
+        }
+        .btn-process:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255,0,0,0.3);
+        }
+        .btn-clear {
+            background: #f0f0f0;
+            color: #333;
+        }
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .results {
+            display: none;
+        }
+        .results.show {
+            display: block;
+            animation: slideIn 0.4s ease;
+        }
+        .results-header {
+            background: linear-gradient(135deg, #FF0000 0%, #CC0000 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 12px 12px 0 0;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        .results-body {
+            border: 2px solid #FF0000;
+            border-top: none;
+            border-radius: 0 0 12px 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .result-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .result-item:last-child {
+            border-bottom: none;
+        }
+        .status-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+        }
+        .status-valid {
+            background: #4CAF50;
+        }
+        .status-invalid {
+            background: #f44336;
+        }
+        .result-content {
+            flex: 1;
+        }
+        .result-url {
+            color: #333;
+            word-break: break-all;
+            margin-bottom: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .result-message {
+            color: #666;
+            font-size: 0.85em;
+        }
+        .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        .stat-item {
+            flex: 1;
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #FF0000;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #FF0000;
+            font-weight: 600;
+        }
+        .loading.show {
+            display: block;
+        }
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #FF0000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>
+            <span style="font-size: 1.2em;">▶️</span>
+            YouTube URL Processor
+        </h1>
+        <p class="subtitle">Enter YouTube URLs to process them on the server</p>
+        
+        <div class="input-section">
+            <label for="urlInput">YouTube URLs:</label>
+            <textarea 
+                id="urlInput" 
+                placeholder="Paste your YouTube URLs here (one per line)&#10;&#10;Example:&#10;https://www.youtube.com/watch?v=dQw4w9WgXcQ&#10;https://youtu.be/dQw4w9WgXcQ"
+            ></textarea>
+            <p class="hint">💡 Enter one URL per line. Both youtube.com and youtu.be formats are supported.</p>
+        </div>
+        
+        <div class="button-group">
+            <button class="btn-process" onclick="processUrls()">
+                🚀 Process URLs
+            </button>
+            <button class="btn-clear" onclick="clearAll()">
+                🗑️ Clear All
+            </button>
+        </div>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            Processing your URLs...
+        </div>
+        
+        <div class="results" id="results">
+            <div class="results-header">
+                📊 Processing Results
+            </div>
+            <div class="results-body" id="resultsBody"></div>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalCount">0</div>
+                    <div class="stat-label">Total URLs</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="validCount" style="color: #4CAF50;">0</div>
+                    <div class="stat-label">Valid</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="invalidCount" style="color: #f44336;">0</div>
+                    <div class="stat-label">Invalid</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function processUrls() {
+            const textarea = document.getElementById('urlInput');
+            const text = textarea.value.trim();
+            
+            if (!text) {
+                alert('Please enter at least one URL');
+                return;
+            }
+            
+            // Split by newlines and filter empty lines
+            const urls = text.split('\n')
+                .map(url => url.trim())
+                .filter(url => url.length > 0);
+            
+            if (urls.length === 0) {
+                alert('Please enter valid URLs');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loading').classList.add('show');
+            document.getElementById('results').classList.remove('show');
+            
+            try {
+                const response = await fetch('/api/process-videos', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ urls: urls })
+                });
+                
+                const data = await response.json();
+                displayResults(data);
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').classList.remove('show');
+            }
+        }
+        
+        function displayResults(data) {
+            const resultsBody = document.getElementById('resultsBody');
+            const resultsDiv = document.getElementById('results');
+            
+            let validCount = 0;
+            let invalidCount = 0;
+            
+            resultsBody.innerHTML = '';
+            
+            data.results.forEach(result => {
+                if (result.status === 'valid') validCount++;
+                else invalidCount++;
+                
+                const item = document.createElement('div');
+                item.className = 'result-item';
+                item.innerHTML = `
+                    <div class="status-icon status-${result.status}">
+                        ${result.status === 'valid' ? '✓' : '✗'}
+                    </div>
+                    <div class="result-content">
+                        <div class="result-url">${result.url}</div>
+                        <div class="result-message">${result.message}</div>
+                    </div>
+                `;
+                resultsBody.appendChild(item);
+            });
+            
+            // Update stats
+            document.getElementById('totalCount').textContent = data.total;
+            document.getElementById('validCount').textContent = validCount;
+            document.getElementById('invalidCount').textContent = invalidCount;
+            
+            // Show results
+            resultsDiv.classList.add('show');
+        }
+        
+        function clearAll() {
+            document.getElementById('urlInput').value = '';
+            document.getElementById('results').classList.remove('show');
+        }
+        
+        // Allow Ctrl+Enter to submit
+        document.getElementById('urlInput').addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'Enter') {
+                processUrls();
+            }
+        });
+    </script>
+</body>
+</html>
