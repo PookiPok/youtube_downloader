@@ -149,8 +149,10 @@ class YouTubeFaceEmotionAnalyzer:
             youtube_url: URL of YouTube video
             frame_skip: Process every Nth frame (default: 30, ~1 per second for 30fps video)
         """
+        result = []
         for i, youtube_url in enumerate(youtubes_url, 1):
             # Download video
+            print(youtube_url)
             video_path = self.download_video(youtube_url)
             if not video_path:
                 return
@@ -243,6 +245,120 @@ class YouTubeFaceEmotionAnalyzer:
                     percentage = (count / face_count * 100) if face_count > 0 else 0
                     print(f"  {emotion.capitalize():10s}: {count:4d} ({percentage:5.1f}%)")
             print("="*60)
+            result.append({
+                'total_frames': processed_count,
+                'total_faces': 'face_count',
+            })
+        return result
+    
+    def process_single_video(self, youtube_url, frame_skip=30):
+        """
+        Main processing function: download video, extract frames, detect faces,
+        analyze emotions, and save cropped faces.
+        
+        Args:
+            youtube_url: URL of YouTube video
+            frame_skip: Process every Nth frame (default: 30, ~1 per second for 30fps video)
+        """
+        result = []
+        # Download video
+        video_path = self.download_video(youtube_url)
+        if not video_path:
+            return
+        
+        # Open video
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            print("✗ Error: Could not open video file")
+            return
+        
+        # Get video properties
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        
+        print(f"\nVideo Info:")
+        print(f"  Total frames: {total_frames}")
+        print(f"  FPS: {fps}")
+        print(f"  Processing every {frame_skip} frames\n")
+        
+        frame_count = 0
+        processed_count = 0
+        face_count = 0
+        emotion_stats = {emotion: 0 for emotion in self.emotions}
+        
+        print("Processing video frames...")
+        
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # Process only every Nth frame
+            if frame_count % frame_skip == 0:
+                processed_count += 1
+                
+                # Detect faces in frame
+                faces = self.detect_faces(frame)
+                
+                if len(faces) > 0:
+                    print(f"Frame {frame_count}: Found {len(faces)} face(s)")
+                
+                # Process each detected face
+                for i, (x, y, w, h) in enumerate(faces):
+                    # Add padding to face crop
+                    padding = int(0.2 * w)
+                    x1 = max(0, x - padding)
+                    y1 = max(0, y - padding)
+                    x2 = min(frame.shape[1], x + w + padding)
+                    y2 = min(frame.shape[0], y + h + padding)
+                    
+                    # Crop face
+                    face_img = frame[y1:y2, x1:x2]
+                    
+                    # Analyze emotion
+                    emotion = self.analyze_emotion(face_img)
+                    
+                    if emotion:
+                        # Save cropped face
+                        filepath = self.save_face(face_img, emotion, frame_count, i)
+                        face_count += 1
+                        emotion_stats[emotion] += 1
+                        print(f"  Face {i+1}: {emotion} → {os.path.basename(filepath)}")
+            
+            frame_count += 1
+            
+            # Progress update
+            if frame_count % 300 == 0:
+                progress = (frame_count / total_frames) * 100
+                print(f"\nProgress: {progress:.1f}% ({frame_count}/{total_frames} frames)\n")
+        
+        # Cleanup
+        cap.release()
+        
+        # Remove temporary video file
+        try:
+            os.remove(video_path)
+            print("\n✓ Cleaned up temporary video file")
+        except:
+            pass
+        
+        # Print summary
+        print("\n" + "="*60)
+        print("PROCESSING COMPLETE")
+        print("="*60)
+        print(f"Total frames processed: {processed_count}")
+        print(f"Total faces detected: {face_count}")
+        print(f"\nEmotion breakdown:")
+        for emotion, count in sorted(emotion_stats.items(), key=lambda x: x[1], reverse=True):
+            if count > 0:
+                percentage = (count / face_count * 100) if face_count > 0 else 0
+                print(f"  {emotion.capitalize():10s}: {count:4d} ({percentage:5.1f}%)")
+        print("="*60)
+        result.append({
+            'total_frames': processed_count,
+            'total_faces': 'face_count',
+        })
+        return result
 
 def load_youtube_links(file_path):
     """Load YouTube links from a text file."""
