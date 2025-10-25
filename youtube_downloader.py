@@ -6,7 +6,7 @@ and saves cropped faces organized by emotion category.
 Required packages:
 pip install opencv-python deepface yt-dlp pillow numpy tensorflow tf-keras
 """
-
+import sys
 import cv2
 import os
 from deepface import DeepFace
@@ -244,29 +244,80 @@ class YouTubeFaceEmotionAnalyzer:
                     print(f"  {emotion.capitalize():10s}: {count:4d} ({percentage:5.1f}%)")
             print("="*60)
 
+def load_youtube_links(file_path):
+    """Load YouTube links from a text file."""
+    links = []
+    
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            for line_num, line in enumerate(file, 1):
+                line = line.strip()
+                
+                # Skip empty lines
+                if not line:
+                    continue
+                
+                # Check if line contains multiple links separated by delimiter
+                if ',' in line or '\t' in line or ' ' in line:
+                    # Try splitting by common delimiters
+                    parts = re.split(r'[,\t\s]+', line)
+                    for part in parts:
+                        part = part.strip()
+                        if part and ('youtube.com' in part or 'youtu.be' in part):
+                            links.append(part)
+                            print(f"Line {line_num}: {part}")
+                else:
+                    # Single link per line
+                    if 'youtube.com' in line or 'youtu.be' in line:
+                        links.append(line)
+  
+                        print(f"Line {line_num}: {line}")
+    
+    except FileNotFoundError:
+        print(f"Error: File '{file_path}' not found.")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error reading file: {e}")
+        sys.exit(1)
+    
+    return links
+
 
 def main():
-    """Main execution function."""
-    print("="*60)
-    print("YouTube Video Face Emotion Analyzer")
-    print("="*60)
-    
-    # Get YouTube URL from user
-    youtube_url = input("\nEnter YouTube video URL: ").strip()
-    
-    if not youtube_url:
-        print("✗ Error: No URL provided")
-        return
-    
-    # Optional: Set frame skip (process every Nth frame)
-    try:
-        frame_skip = int(input("Process every N frames (default 30): ").strip() or "30")
-    except ValueError:
-        frame_skip = 30
-    
+
+    frame_skip = 30
+    youtube_links = []
+    if len(sys.argv) < 2:
+        print("Usage: python script.py <path_to_txt_file>")
+        """Main execution function."""
+        print("="*60)
+        print("YouTube Video Face Emotion Analyzer")
+        print("="*60)
+        
+        # Get YouTube URL from user
+        youtube_links = input("\nEnter YouTube video URL: ").strip()
+        
+        if not youtube_links:
+            print("✗ Error: No URL provided")
+            return
+        
+        # Optional: Set frame skip (process every Nth frame)
+        try:
+            frame_skip = int(input("Process every N frames (default 30): ").strip() or "30")
+        except ValueError:
+            frame_skip = 30
+    else:
+        file_path = sys.argv[1]
+        print(f"Loading YouTube links from: {file_path}\n")
+        youtube_links = load_youtube_links(file_path)
+        
+        print(f"\n{'='*50}")
+        print(f"Total links found: {len(youtube_links)}")
+        print(f"{'='*50}\n")
+        
     # Create analyzer and process video
     analyzer = YouTubeFaceEmotionAnalyzer(output_dir="emotion_faces")
-    analyzer.process_video(youtube_url, frame_skip=frame_skip)
+    analyzer.process_video(youtube_links, frame_skip=frame_skip)
     
     print(f"\n✓ All cropped faces saved to 'emotion_faces' folder")
 
